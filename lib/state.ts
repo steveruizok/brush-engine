@@ -2,19 +2,7 @@ import { createSelectorHook, createState } from "@state-designer/react"
 import { modulate, lerp, distanceBetweenPoints, lerpPoints } from "./utils"
 import { compress, decompress } from "lz-string"
 import * as PIXI from "pixi.js"
-
-interface IBrush {
-  color: string
-  size: number
-  opacity: number
-  speed: number
-  streamline: number
-  variation: number
-  spacing: number
-  jitter: number
-  sizeJitter: number
-  alpha: number
-}
+import { IMark, IBrush } from "./types"
 
 const dpr = window.devicePixelRatio
 
@@ -54,7 +42,7 @@ const brushTexture = app.renderer.generateTexture(
   dpr
 )
 
-// Mark functions
+// IMark functions
 
 let pixiMark: ReturnType<typeof createPixiMark>
 
@@ -108,7 +96,7 @@ function cleanCurrSurface() {
 
 function renderMarks(
   brush: IBrush,
-  marks: Mark[],
+  marks: IMark[],
   options = {} as { simulatePressure?: boolean; opacity?: number }
 ) {
   cleanPrevSurface()
@@ -247,11 +235,6 @@ function handleResize() {
   }
 }
 
-interface Mark {
-  type: string
-  points: number[][]
-}
-
 const state = createState({
   data: {
     error: 0,
@@ -272,8 +255,8 @@ const state = createState({
       showControls: true,
       simulatePressure: true,
     },
-    marks: [] as Mark[],
-    currentMark: undefined as Mark,
+    marks: [] as IMark[],
+    currentMark: undefined as IMark,
   },
   on: {
     LOADED: ["mountApp", "loadData"],
@@ -323,7 +306,7 @@ const state = createState({
     },
   },
   actions: {
-    // Marks
+    // IMarks
     createMark(data) {
       const { x, y, type } = pointer
       const { brush } = data
