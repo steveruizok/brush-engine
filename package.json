@@ -1,0 +1,31 @@
+{
+  "name": "brush-engine",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@pixi/filter-ascii": "^3.1.1",
+    "@pixi/filter-color-overlay": "^3.1.1",
+    "@pixi/filter-dot": "^3.1.1",
+    "@pixi/filter-outline": "^3.2.0",
+    "@state-designer/react": "^1.5.6",
+    "lz-string": "^1.4.4",
+    "next": "10.0.7",
+    "pixi.js": "^5.3.8",
+    "react": "17.0.1",
+    "react-dom": "17.0.1",
+    "react-feather": "^2.0.9",
+    "styled-components": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/lz-string": "^1.3.34",
+    "@types/node": "^14.14.31",
+    "@types/react": "^17.0.2",
+    "@types/styled-components": "^5.1.7",
+    "typescript": "^4.2.2"
+  }
+}
