@@ -57,20 +57,7 @@ export default function Controls() {
         value={brush.spacing}
         onChange={(spacing) => state.send("CHANGED_BRUSH", { spacing })}
       />
-      <NumberInput
-        label="Speed"
-        min={0.01}
-        max={1}
-        value={brush.speed}
-        onChange={(speed) => state.send("CHANGED_BRUSH", { speed })}
-      />
-      <NumberInput
-        label="Variation"
-        min={0.01}
-        max={0.99}
-        value={brush.variation}
-        onChange={(variation) => state.send("CHANGED_BRUSH", { variation })}
-      />
+
       <NumberInput
         label="Alpha"
         min={0}
@@ -100,11 +87,25 @@ export default function Controls() {
         onChange={(sizeJitter) => state.send("CHANGED_BRUSH", { sizeJitter })}
       />
       <NumberInput
+        label="Variation"
+        min={0.01}
+        max={0.99}
+        value={brush.variation}
+        onChange={(variation) => state.send("CHANGED_BRUSH", { variation })}
+      />
+      <NumberInput
         label="Streamline"
         min={0}
         max={1}
         value={brush.streamline}
         onChange={(streamline) => state.send("CHANGED_BRUSH", { streamline })}
+      />
+      <NumberInput
+        label="Speed"
+        min={0.01}
+        max={1}
+        value={brush.speed}
+        onChange={(speed) => state.send("CHANGED_BRUSH", { speed })}
       />
       <BooleanInput
         label="Simulate Pressure"
@@ -120,6 +121,16 @@ export default function Controls() {
           state.send("CHANGED_SETTINGS", { rerenderMarks })
         }
       />
+      <ButtonGroup>
+        <button onClick={() => state.send("RESET_BRUSH")}>Reset</button>
+        <button
+          onClick={() =>
+            state.send("CHANGED_SETTINGS", { showControls: false })
+          }
+        >
+          Close
+        </button>
+      </ButtonGroup>
       {/* <BooleanInput
         label="Simulate Pressure"
         value={options.simulatePressure}

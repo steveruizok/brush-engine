@@ -1,166 +1,10 @@
 import { createSelectorHook, createState } from "@state-designer/react"
-import { modulate, lerp, distanceBetweenPoints, lerpPoints } from "./utils"
+import { lerp } from "./utils"
 import { compress, decompress } from "lz-string"
-import * as PIXI from "pixi.js"
 import { IMark, IBrush } from "./types"
-
-const dpr = window.devicePixelRatio
-
-// Pixi App
-PIXI.settings.RESOLUTION = dpr
-PIXI.settings.SCALE_MODE = PIXI.SCALE_MODES.LINEAR
-PIXI.settings.FILTER_RESOLUTION = dpr
-
-const app = new PIXI.Application({
-  backgroundColor: 0x1d1d1d,
-  antialias: true,
-  resolution: dpr,
-})
-
-// Surface for previous strokes
-const prevSurface = new PIXI.Graphics()
-app.stage.addChild(prevSurface)
-
-// Surface for the current stroke
-const currSurface = new PIXI.Graphics()
-app.stage.addChild(currSurface)
-
-// Filters?
-prevSurface.filters = []
-currSurface.filters = []
-
-// Brush texture
-
-const brushShape = new PIXI.Graphics()
-brushShape.beginFill(Number(0xffffff))
-brushShape.drawCircle(0, 0, 50)
-brushShape.endFill()
-
-const brushTexture = app.renderer.generateTexture(
-  brushShape,
-  PIXI.SCALE_MODES.LINEAR,
-  dpr
-)
-
-// IMark functions
+import app, { createPixiMark, clean } from "./pixi"
 
 let pixiMark: ReturnType<typeof createPixiMark>
-
-function createPixiMark(brush: IBrush) {
-  let { color, opacity, alpha } = brush
-  let nColor = Number(color.replace("#", "0x"))
-
-  // Container
-  const container = new PIXI.Container()
-  container.interactive = false
-  container.interactiveChildren = false
-  currSurface.addChild(container)
-  if (opacity < 1) {
-    container.filters = [new PIXI.filters.AlphaFilter(opacity)]
-  }
-
-  function addPoint([x, y]: number[], size: number) {
-    const dab = new PIXI.Sprite(brushTexture)
-    dab.tint = nColor
-    dab.anchor.set(0.5)
-    dab.setTransform(x / dpr, y / dpr, size / 100 / dpr, size / 100 / dpr)
-    container.addChild(dab)
-    dab.alpha = alpha
-  }
-
-  function complete() {
-    currSurface.removeChild(container)
-    prevSurface.addChild(container)
-    pixiMark = undefined
-  }
-
-  // Let's also keep it global for now
-  pixiMark = { addPoint, complete }
-
-  return { addPoint, complete }
-}
-
-function cleanPrevSurface() {
-  for (let child of prevSurface.children) {
-    child.destroy()
-  }
-  prevSurface.removeChildren()
-}
-
-function cleanCurrSurface() {
-  for (let child of currSurface.children) {
-    child.destroy()
-  }
-  currSurface.removeChildren()
-}
-
-function renderMarks(
-  brush: IBrush,
-  marks: IMark[],
-  options = {} as { simulatePressure?: boolean; opacity?: number }
-) {
-  cleanPrevSurface()
-  cleanCurrSurface()
-  const { simulatePressure = true } = options
-  const { size, variation, spacing, jitter, sizeJitter } = brush
-
-  const maxSize = size
-  const minSize = maxSize * (1 - variation)
-
-  for (let { points } of marks) {
-    const mark = createPixiMark(brush)
-    let prev: number[],
-      curr: number[],
-      error = 0
-
-    for (let i = 0; i < points.length; i++) {
-      curr = points[i]
-
-      const [x, y, p] = curr
-
-      if (!prev) {
-        prev = [...curr]
-        mark.addPoint([x, y], p)
-        continue
-      }
-
-      const dist = distanceBetweenPoints(prev, curr)
-
-      let trav = error
-
-      while (trav <= dist) {
-        let [tx, ty, tp] = lerpPoints(prev, curr, trav / dist)
-        let ts = simulatePressure ? lerp(minSize, maxSize, tp) : size
-
-        trav += ts * Math.max(spacing, 0.01)
-
-        const jx = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const jy = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const js = lerp(
-          -sizeJitter * (size / 2),
-          sizeJitter * (size / 2),
-          Math.random()
-        )
-
-        pixiMark.addPoint([tx + jx, ty + jy], ts + js)
-      }
-
-      error = trav - dist
-
-      prev = [...curr]
-    }
-
-    mark.complete()
-  }
-}
 
 // Pointer
 
@@ -235,44 +79,49 @@ function handleResize() {
   }
 }
 
+const defaultBrush: IBrush = {
+  color: "#ffbe0c",
+  size: 32,
+  spacing: 0.15,
+  speed: 0.62,
+  variation: 0.82,
+  streamline: 0.5,
+  opacity: 1,
+  alpha: 0.9,
+  jitter: 0.06,
+  sizeJitter: 0,
+  type: "mouse",
+}
+
 const state = createState({
   data: {
-    error: 0,
-    brush: {
-      color: "#ffbe0c",
-      size: 32,
-      spacing: 0.15,
-      speed: 0.62,
-      variation: 0.82,
-      streamline: 0.5,
-      opacity: 1,
-      alpha: 0.9,
-      jitter: 0.06,
-      sizeJitter: 0,
-    },
+    brush: defaultBrush,
     settings: {
       rerenderMarks: true,
-      showControls: true,
+      showControls: false,
       simulatePressure: true,
     },
     marks: [] as IMark[],
     currentMark: undefined as IMark,
   },
   on: {
-    LOADED: ["mountApp", "loadData"],
+    LOADED: ["mountApp", "loadData", "rerenderMarks"],
     UNLOADED: ["unmountApp"],
     STARTED_PRESSING_E: "clearMarks",
     ERASED: "clearMarks",
     CHANGED_BRUSH: [
       "updateBrush",
-      { if: "rerenderMarks", do: ["saveData", "rerenderMarks"] },
+      "saveData",
+      { if: "rerenderMarks", do: "rerenderMarks" },
     ],
     CHANGED_SETTINGS: [
       "updateSettings",
-      { if: "rerenderMarks", do: ["saveData", "rerenderMarks"] },
+      "saveData",
+      { if: "rerenderMarks", do: "rerenderMarks" },
     ],
     UNDO: ["undo", "rerenderMarks", "saveData"],
     REDO: ["redo", "rerenderMarks", "saveData"],
+    RESET_BRUSH: ["resetBrush", "rerenderMarks", "saveData"],
   },
   states: {
     canvas: {
@@ -309,113 +158,52 @@ const state = createState({
     // IMarks
     createMark(data) {
       const { x, y, type } = pointer
-      const { brush } = data
+      const { brush, settings } = data
 
       let p = type === "pen" ? pointer.p : 0.15
+
+      brush.type = type
 
       data.currentMark = {
         type,
         points: [[x, y, p]],
       }
 
-      const maxSize = brush.size
-      const minSize = maxSize * (1 - brush.variation)
-
-      const mark = createPixiMark(brush)
-      mark.addPoint([x, y], modulate(p, [0, 1], [minSize, maxSize]))
+      pixiMark = createPixiMark(brush, settings)
+      pixiMark.addPoint([x, y, p])
     },
     updateMark(data) {
       let { x, y, p } = pointer
       const mark = data.currentMark!
-      const prev = mark.points[mark.points.length - 1]
-      const {
-        brush: {
-          size,
-          jitter,
-          sizeJitter,
-          streamline,
-          speed,
-          variation,
-          spacing,
-        },
-        error,
-        settings: { simulatePressure },
-      } = data
-
-      const maxSize = size
-      const minSize = maxSize * (1 - variation)
-
-      // TODO - move into mark fn
-
-      // Move point towards previous point (streamline)
-      x = prev[0] + (x - prev[0]) * (1 - streamline)
-      y = prev[1] + (y - prev[1]) * (1 - streamline)
-
-      // Get distance between current and previous point
-      const dist = Math.hypot(x - prev[0], y - prev[1])
-
-      if (mark.type !== "pen") {
-        // Use distance to determine pressure
-        p = 1 - Math.min(1, dist / size)
-      }
-
-      // Smooth pressure changes (speed)
-      p = lerp(prev[2], p, speed)
-
-      let trav = error
-
-      while (trav <= dist) {
-        let [tx, ty, tp] = lerpPoints(prev, [x, y, p], trav / dist)
-        let ts = simulatePressure ? lerp(minSize, maxSize, tp) : size
-
-        trav += ts * spacing
-
-        const jx = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const jy = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const js = lerp(
-          -sizeJitter * (size / 2),
-          sizeJitter * (size / 2),
-          Math.random()
-        )
-
-        pixiMark.addPoint([tx + jx, ty + jy], ts + js)
-      }
-
-      data.error = trav - dist
+      pixiMark.addPoint([x, y, p])
       mark.points.push([x, y, p])
     },
     finishMark(data) {
       const mark = data.currentMark!
-      const maxSize = data.brush.size
-      const minSize = maxSize * (1 - data.brush.variation)
+      const { x, y, p } = pointer
 
-      if (mark.points.length < 3) {
-        const { x, y } = pointer
-        const p = lerp(minSize, maxSize, 0.618)
-        mark.points.push([x, y, p])
-        pixiMark.addPoint([x, y], p)
-      }
+      mark.points.push([x, y, p])
+      pixiMark.complete([x, y, p])
 
       data.marks.push(mark)
       data.currentMark = undefined
-      pixiMark.complete()
     },
     clearMarks(data) {
-      cleanPrevSurface()
-      cleanCurrSurface()
+      clean()
       data.marks = []
       data.currentMark = undefined
     },
     rerenderMarks(data) {
-      renderMarks(data.brush, data.marks, data.settings)
+      clean()
+
+      for (let { points } of data.marks) {
+        const mark = createPixiMark(data.brush, data.settings)
+        for (let i = 0; i < points.length - 1; i++) {
+          mark.addPoint(points[i])
+        }
+
+        mark.complete(points[points.length - 1])
+      }
     },
 
     // Undo / Redo
@@ -441,8 +229,6 @@ const state = createState({
           const loaded = JSON.parse(decompress(local)) as Partial<typeof data>
 
           Object.assign(data, loaded)
-
-          renderMarks(data.brush, data.marks)
         }
       }
     },
@@ -454,6 +240,9 @@ const state = createState({
     // Brush
     updateBrush(data, payload: Partial<IBrush>) {
       data.brush = { ...data.brush, ...payload }
+    },
+    resetBrush(data) {
+      data.brush = { ...defaultBrush }
     },
 
     // Setup / Teardown
@@ -470,8 +259,7 @@ const state = createState({
       }
     },
     unmountApp(data, payload: { elm: HTMLDivElement }) {
-      cleanCurrSurface()
-      cleanPrevSurface()
+      clean()
       payload.elm.innerHTML = ""
       if (typeof window !== "undefined") {
         window.removeEventListener("resize", handleResize)
