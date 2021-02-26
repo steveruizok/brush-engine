@@ -2,12 +2,6 @@ import { createSelectorHook, createState } from "@state-designer/react"
 import { modulate, lerp, distanceBetweenPoints, lerpPoints } from "./utils"
 import { compress, decompress } from "lz-string"
 import * as PIXI from "pixi.js"
-import * as Bezier from "./bezier"
-import * as Vector from "./vector"
-import { AsciiFilter } from "@pixi/filter-ascii"
-import { OutlineFilter } from "@pixi/filter-outline"
-import { DotFilter } from "@pixi/filter-dot"
-import { ColorOverlayFilter } from "@pixi/filter-color-overlay"
 
 interface IBrush {
   color: string
