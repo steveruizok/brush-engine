@@ -172,7 +172,7 @@ export function distance(A: IVector, B: IVector) {
  * @param B
  */
 export function ang(A: IVector, B: IVector) {
-  return Math.atan2(A[1] - B[1], A[0] - B[0])
+  return Math.atan2(cpr(A, B), dpr(A, B))
 }
 
 /**

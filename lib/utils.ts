@@ -258,3 +258,45 @@ export function circleFromThreePoints(
     Math.sqrt(bx * bx + by * by - 4 * a * c) / (2 * Math.abs(a)),
   ]
 }
+
+/**
+ * Get outer tangents of two circles.
+ * @param x0
+ * @param y0
+ * @param r0
+ * @param x1
+ * @param y1
+ * @param r1
+ * @returns [lx0, ly0, lx1, ly1, rx0, ry0, rx1, ry1]
+ */
+export function getOuterTangents(
+  x0: number,
+  y0: number,
+  r0: number,
+  x1: number,
+  y1: number,
+  r1: number
+) {
+  const dx = x1 - x0,
+    dy = y1 - y0,
+    dist = Math.hypot(dx, dy)
+
+  // Circles are overlapping, no tangents
+  if (dist < Math.abs(r1 - r0)) return
+
+  const a0 = Math.atan2(dy, dx),
+    a1 = Math.acos((r0 - r1) / dist),
+    t0 = a0 + a1,
+    t1 = a0 - a1
+
+  return [
+    x0 + r0 * Math.cos(t1),
+    y0 + r0 * Math.sin(t1),
+    x1 + r1 * Math.cos(t1),
+    y1 + r1 * Math.sin(t1),
+    x0 + r0 * Math.cos(t0),
+    y0 + r0 * Math.sin(t0),
+    x1 + r1 * Math.cos(t0),
+    y1 + r1 * Math.sin(t0),
+  ]
+}

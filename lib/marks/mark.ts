@@ -1,4 +1,4 @@
-import { lerp, lerpPoints } from "../utils"
+import { lerp, getSpline, lerpPoints } from "../utils"
 import { IBrush, ISettings } from "../types"
 
 // A factory function, creates a mark and returns functions for
@@ -47,53 +47,56 @@ export function createMark(brush: IBrush, options = {} as ISettings) {
       // Get distance between current and previous point
       const dist = Math.hypot(x - prev[0], y - prev[1])
 
+      if (!last && dist < size / 2) return []
+
       // Use distance to determine pressure if not provided
       if (type !== "pen") {
-        p = 1 - Math.min(1, dist / size)
+        p = 1 - Math.min(1, (dist - size / 2) / size)
       }
 
       // Smooth pressure changes (speed)
-      p = lerp(prev[2], p, speed)
+      p = lerp(prev[2], p, p - prev[2] > 0 ? speed / 2 : speed)
 
       // Add the last point at the current position
       if (last) {
-        newPts.push([x, y, lerp(minSize, maxSize, p / 2)])
+        ptsToDraw.push([x, y, lerp(minSize, maxSize, p / 2)])
+      } else {
+        // Add interpolated points between prev and curr
+        // let trav = error
+
+        // while (trav <= dist) {
+        //   let [tx, ty, tp] = lerpPoints(prev, [x, y, p], trav / dist)
+        //   let ts = simulatePressure ? lerp(minSize, maxSize, tp) : size
+
+        //   trav += ts * spacing
+
+        //   const jx = lerp(
+        //     -jitter * (size / 2),
+        //     jitter * (size / 2),
+        //     Math.random()
+        //   )
+        //   const jy = lerp(
+        //     -jitter * (size / 2),
+        //     jitter * (size / 2),
+        //     Math.random()
+        //   )
+        //   const js = lerp(
+        //     -sizeJitter * (size / 2),
+        //     sizeJitter * (size / 2),
+        //     Math.random()
+        //   )
+
+        //   newPts.push([tx + jx, ty + jy, ts + js])
+        // }
+
+        // error = trav - dist
+
+        prev = [x, y, p]
+
+        newPts.push([x, y, lerp(minSize, maxSize, last ? p : p / 4)])
       }
-
-      // Add interpolated points between prev and curr
-      let trav = error
-
-      while (trav <= dist) {
-        let [tx, ty, tp] = lerpPoints(prev, [x, y, p], trav / dist)
-        let ts = simulatePressure ? lerp(minSize, maxSize, tp) : size
-
-        trav += ts * spacing
-
-        const jx = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const jy = lerp(
-          -jitter * (size / 2),
-          jitter * (size / 2),
-          Math.random()
-        )
-        const js = lerp(
-          -sizeJitter * (size / 2),
-          sizeJitter * (size / 2),
-          Math.random()
-        )
-
-        newPts.push([tx + jx, ty + jy, ts + js])
-      }
-
-      prev = [x, y, p]
-
-      // error = trav - dist
     }
 
-    // ptsToDraw.push([x, y, lerp(minSize, maxSize, p)])
     ptsToDraw.push(...newPts)
 
     return newPts

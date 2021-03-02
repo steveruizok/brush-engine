@@ -9,7 +9,7 @@ import {
   clean,
   CreateMarkRenderer,
   setupExperiment,
-} from "./marks/exp"
+} from "./render/canvas-chunks"
 import { createMark, getMark, CreateMark } from "./marks/mark"
 import * as Data from "./data"
 
@@ -148,7 +148,7 @@ const state = createState({
         drawing: {
           on: {
             MOVED_POINTER: {
-              do: ["updateMark", "rerenderMarks"],
+              do: ["updateMark"],
             },
             STOPPED_POINTING: {
               do: ["updateMark", "finishMark", "saveData"],
@@ -190,16 +190,16 @@ const state = createState({
       const mark = data.currentMark!
       mark.points.push([x, y, p])
 
-      // const pts = markFactory.addPoint([x, y, p])
-      // markRenderer.addPoints(pts)
+      const pts = markFactory.addPoint([x, y, p])
+      markRenderer.addPoints(pts)
     },
     finishMark(data) {
       const mark = data.currentMark!
       let { x, y, p } = pointer
       mark.points.push([x, y, p])
 
-      // const pts = markFactory.addPoint([x, y, p], true)
-      // markRenderer.addPoints(pts)
+      const pts = markFactory.addPoint([x, y, p], true)
+      markRenderer.addPoints(pts)
 
       markRenderer.complete()
 

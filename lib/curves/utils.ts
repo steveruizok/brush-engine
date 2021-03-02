@@ -25,8 +25,8 @@ export function preciseRound(num: number, precision: number) {
  * @param B
  */
 export function distance2(A: IVector, B: IVector) {
-  var dX = B.x - A.x
-  var dY = B.y - A.y
+  var dX = B[0] - A[0]
+  var dY = B[1] - A[1]
   return dX * dX + dY * dY
 }
 
@@ -213,4 +213,14 @@ export function getDocumentOffsetLeft(elm: HTMLElement): number {
       ? getDocumentOffsetLeft(elm.offsetParent as HTMLElement)
       : 0)
   )
+}
+
+/**
+ * Linear interpolation betwen two numbers.
+ * @param y1
+ * @param y2
+ * @param mu
+ */
+export function lerp(y1: number, y2: number, mu: number) {
+  return y1 * (1 - mu) + y2 * mu
 }
