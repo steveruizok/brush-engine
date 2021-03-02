@@ -4,20 +4,15 @@ import * as Utils from "./utils"
 /**
  * Create a new vector object.
  */
-export function create(A: IVector): IVector
 export function create(x: number, y: number): IVector
-export function create(pts: number[]): IVector
-export function create(x: number | IVector | number[], y?: number): IVector {
+export function create(A: IVector): IVector
+export function create(x: number | IVector, y?: number): IVector {
   // A new copy the vector object
   if (Array.isArray(x)) {
-    return { x: x[0], y: x[1] }
+    return [...x]
   }
 
-  if (typeof x === "object") {
-    return { ...x }
-  } else {
-    return { x, y: y as number }
-  }
+  return [x, y as number]
 }
 
 /**
@@ -25,7 +20,7 @@ export function create(x: number | IVector | number[], y?: number): IVector {
  * @param A
  */
 export function slope(A: IVector) {
-  return A.y / A.x
+  return A[1] / A[0]
 }
 
 /**
@@ -34,7 +29,7 @@ export function slope(A: IVector) {
  * @param B
  */
 export function add(A: IVector, B: IVector) {
-  return create(A.x + B.x, A.y + B.y)
+  return create(A[0] + B[0], A[1] + B[1])
 }
 
 /**
@@ -43,7 +38,7 @@ export function add(A: IVector, B: IVector) {
  * @param B
  */
 export function sub(A: IVector, B: IVector) {
-  return create(A.x - B.x, A.y - B.y)
+  return create(A[0] - B[0], A[1] - B[1])
 }
 
 /**
@@ -53,7 +48,7 @@ export function sub(A: IVector, B: IVector) {
  */
 export function vec(A: IVector, B: IVector) {
   // A, B as points get the vector from A to B
-  return create(B.x - A.x, B.y - A.y)
+  return create(B[0] - A[0], B[1] - A[1])
 }
 
 /**
@@ -63,7 +58,7 @@ export function vec(A: IVector, B: IVector) {
  */
 export function mul(A: IVector, n: number) {
   // VECTOR MULTIPLICATION BY SCALAR
-  return create(A.x * n, A.y * n)
+  return create(A[0] * n, A[1] * n)
 }
 
 /**
@@ -72,7 +67,7 @@ export function mul(A: IVector, n: number) {
  * @param n
  */
 export function div(A: IVector, n: number) {
-  return create(A.x / n, A.y / n)
+  return create(A[0] / n, A[1] / n)
 }
 
 /**
@@ -80,7 +75,7 @@ export function div(A: IVector, n: number) {
  * @param A
  */
 export function per(A: IVector) {
-  return create(A.y, -A.x)
+  return create(A[1], -A[0])
 }
 
 /**
@@ -89,7 +84,7 @@ export function per(A: IVector) {
  * @param B
  */
 export function dpr(A: IVector, B: IVector) {
-  return A.x * B.x + A.y * B.y
+  return A[0] * B[0] + A[1] * B[1]
 }
 
 /**
@@ -98,7 +93,7 @@ export function dpr(A: IVector, B: IVector) {
  * @param B
  */
 export function cpr(A: IVector, B: IVector) {
-  return A.x * B.y - B.x * A.y
+  return A[0] * B[1] - B[0] * A[1]
 }
 
 /**
@@ -106,7 +101,7 @@ export function cpr(A: IVector, B: IVector) {
  * @param A
  */
 export function len2(A: IVector) {
-  return A.x * A.x + A.y * A.y
+  return A[0] * A[0] + A[1] * A[1]
 }
 
 /**
@@ -127,12 +122,29 @@ export function pry(A: IVector, B: IVector) {
 }
 
 /**
- * Unit vector / direction vector
+ * Get normalized / unit vector.
  * @param A
  */
 export function uni(A: IVector) {
-  var d = len(A)
-  return div(A, d)
+  return div(A, len(A))
+}
+
+/**
+ * Get normalized / unit vector.
+ * @param A
+ */
+export function normalize(A: IVector) {
+  return uni(A)
+}
+
+/**
+ * Get the tangent between two vectors.
+ * @param A
+ * @param B
+ * @returns
+ */
+export function tangent(A: IVector, B: IVector) {
+  return normalize(sub(A, B))
 }
 
 /**
@@ -142,7 +154,7 @@ export function uni(A: IVector) {
  */
 export function distance2(A: IVector, B: IVector) {
   var dif = sub(A, B)
-  return dif.x * dif.x + dif.y * dif.y
+  return dif[0] * dif[0] + dif[1] * dif[1]
 }
 
 /**
@@ -151,7 +163,7 @@ export function distance2(A: IVector, B: IVector) {
  * @param B
  */
 export function distance(A: IVector, B: IVector) {
-  return Math.sqrt(distance2(A, B))
+  return Math.hypot(A[1] - B[1], A[0] - B[0])
 }
 
 /**
@@ -160,7 +172,7 @@ export function distance(A: IVector, B: IVector) {
  * @param B
  */
 export function ang(A: IVector, B: IVector) {
-  return Math.atan2(cpr(A, B), dpr(A, B))
+  return Math.atan2(A[1] - B[1], A[0] - B[0])
 }
 
 /**
@@ -179,8 +191,8 @@ export function med(A: IVector, B: IVector) {
  */
 export function rot(A: IVector, r: number) {
   return create(
-    A.x * Math.cos(r) - A.y * Math.sin(r),
-    A.y * Math.cos(r) + A.x * Math.sin(r)
+    A[0] * Math.cos(r) - A[1] * Math.sin(r),
+    A[1] * Math.cos(r) + A[0] * Math.sin(r)
   )
 }
 
@@ -190,7 +202,7 @@ export function rot(A: IVector, r: number) {
  * @param B
  */
 export function isEqual(A: IVector, B: IVector) {
-  return A.x === B.x && A.y === B.y
+  return A[0] === B[0] && A[1] === B[1]
 }
 
 /**
@@ -239,7 +251,7 @@ export function isLeft(p1: IVector, pc: IVector, p2: IVector) {
   //  isLeft: >0 for counterclockwise
   //          =0 for none (degenerate)
   //          <0 for clockwise
-  return (pc.x - p1.x) * (p2.y - p1.y) - (p2.x - p1.x) * (pc.y - p1.y)
+  return (pc[0] - p1[0]) * (p2[1] - p1[1]) - (p2[0] - p1[0]) * (pc[1] - p1[1])
 }
 
 export function clockwise(p1: IVector, pc: IVector, p2: IVector) {

@@ -21,4 +21,5 @@ export interface ISettings {
   rerenderMarks: boolean
   showControls: boolean
   simulatePressure: boolean
+  resolution: number
 }

@@ -1,7 +1,4 @@
-export interface IVector {
-  x: number
-  y: number
-}
+export type IVector = number[]
 
 export interface IQuadBezier {
   p1: IVector
@@ -16,11 +13,7 @@ export interface IBoundingBox {
   maxY: number
 }
 
-export interface Point extends IVector {
-  p?: number
-}
-
 export type IPoint = {
-  p: Point
+  p: IVector
   d: number
 }

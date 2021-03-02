@@ -8,7 +8,7 @@ html,
 }
 
 :root {
-  --color-background: #1d1d1d;
+  --color-background: #000000;
   --color-text: #cfcfcf;
   --color-scrim: rgba(20, 0, 0, 0.1);
   --color-border: rgba(144, 144, 144, 0.2);
@@ -52,7 +52,7 @@ body {
   font-weight: 500;
   font-size: 15px;
   overscroll-behavior: none;
-  touch-action: manipulation;
+  touch-action: none;
   overflow: hidden;
   color: var(--color-text);
   background-color: var(--color-background);
@@ -71,4 +71,10 @@ body {
   top: 0;
   left: 0;
   z-index: 999;
+}
+
+canvas {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }

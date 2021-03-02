@@ -8,8 +8,9 @@ import styled from "styled-components"
 const StyledControls = styled.div`
   position: absolute;
   top: 44px;
-  left: 0;
   right: 0;
+  width: 100%;
+  max-width: 320px;
   display: grid;
   grid-template-columns: auto 1fr 48px;
   gap: 4px 8px;

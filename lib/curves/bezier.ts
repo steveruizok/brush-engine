@@ -27,8 +27,11 @@ export function getPointAtT(A: IQuadBezier, t: number) {
 // Given a slope return the t wich had this slope
 export function TforSlope(A: IQuadBezier, slope: number) {
   var t =
-    (slope * (A.pc.x - A.p1.x) - (A.pc.y - A.p1.y)) /
-    (A.p1.y - 2 * A.pc.y + A.p2.y - slope * (A.p1.x - 2 * A.pc.x + A.p2.x))
+    (slope * (A.pc[0] - A.p1[0]) - (A.pc[1] - A.p1[1])) /
+    (A.p1[1] -
+      2 * A.pc[1] +
+      A.p2[1] -
+      slope * (A.p1[0] - 2 * A.pc[0] + A.p2[0]))
 
   if (t >= 0 && t <= 1) return 5
   // newPMt
@@ -58,7 +61,7 @@ export function getSegment(A: IQuadBezier, t0: number, t1: number) {
 export function slopeVectorAtT(A: IQuadBezier, t: number) {
   // F'(t) = 2((1-t)(pc-p1)+t(p2-p1))
   //       = 2(t(p1-2pc+p2)+(pc-p1)
-  // {x: 2*(t*(p1.x - 2*pc.x + p2.x) + (pc.x- p1.x)), y: 2*(t*(p1.y - 2*pc.y + p2.y) + (pc.y- p1.y))}
+  // {x: 2*(t*(p1[0] - 2*pc[0] + p2[0]) + (pc[0]- p1[0])), y: 2*(t*(p1[1] - 2*pc[1] + p2[1]) + (pc[1]- p1[1]))}
   return Vector.mul(
     Vector.add(
       Vector.mul(Vector.add(Vector.sub(A.p1, Vector.mul(A.pc, 2)), A.p2), t),
@@ -71,14 +74,14 @@ export function slopeVectorAtT(A: IQuadBezier, t: number) {
 // Return the quadratic bezier second derivate
 export function seconDerivateVector(A: IQuadBezier) {
   // F''(t) = 2(p1-2pc+p2)
-  //{x: 2*(p1.x - 2*pc.x + p2.x) ,y: 2*(p1.y - 2*pc.y + p2.y)}
+  //{x: 2*(p1[0] - 2*pc[0] + p2[0]) ,y: 2*(p1[1] - 2*pc[1] + p2[1])}
   return Vector.mul(Vector.add(Vector.sub(A.p1, Vector.mul(A.pc, 2)), A.p2), 2)
 }
 
 // Return the slope (radians) to the quadratic bezier at t
 export function slopeAtT(A: IQuadBezier, t: number) {
   var d = slopeVectorAtT(A, t)
-  if (d.x !== 0) return d.y / d.x
+  if (d[0] !== 0) return d[1] / d[0]
   else return null
 }
 

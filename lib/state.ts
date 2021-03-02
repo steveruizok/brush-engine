@@ -1,10 +1,19 @@
 import { createSelectorHook, createState } from "@state-designer/react"
-import { lerp } from "./utils"
-import { compress, decompress } from "lz-string"
 import { IMark, IBrush } from "./types"
-import app, { createPixiMark, clean } from "./pixi"
+import {
+  mount,
+  unmount,
+  resize,
+  createMarkRenderer,
+  renderMark,
+  clean,
+  CreateMarkRenderer,
+} from "./exp"
+import { createMark, getMark, CreateMark } from "./mark"
+import * as Data from "./data"
 
-let pixiMark: ReturnType<typeof createPixiMark>
+let markRenderer: ReturnType<CreateMarkRenderer>
+let markFactory: ReturnType<CreateMark>
 
 // Pointer
 
@@ -73,9 +82,7 @@ function handleKeyUp(e: KeyboardEvent) {
 
 function handleResize() {
   if (typeof window !== "undefined") {
-    const w = window.innerWidth
-    const h = window.innerHeight
-    app.renderer.resize(w, h)
+    state.send("RESIZED")
   }
 }
 
@@ -88,7 +95,7 @@ const defaultBrush: IBrush = {
   streamline: 0.5,
   opacity: 1,
   alpha: 0.9,
-  jitter: 0.06,
+  jitter: 0,
   sizeJitter: 0,
   type: "mouse",
 }
@@ -97,6 +104,7 @@ const state = createState({
   data: {
     brush: defaultBrush,
     settings: {
+      resolution: window.devicePixelRatio,
       rerenderMarks: true,
       showControls: false,
       simulatePressure: true,
@@ -107,8 +115,8 @@ const state = createState({
   on: {
     LOADED: ["mountApp", "loadData", "rerenderMarks"],
     UNLOADED: ["unmountApp"],
-    STARTED_PRESSING_E: "clearMarks",
-    ERASED: "clearMarks",
+    STARTED_PRESSING_E: ["clearMarks", "saveData"],
+    ERASED: ["clearMarks", "saveData"],
     CHANGED_BRUSH: [
       "updateBrush",
       "saveData",
@@ -122,6 +130,7 @@ const state = createState({
     UNDO: ["undo", "rerenderMarks", "saveData"],
     REDO: ["redo", "rerenderMarks", "saveData"],
     RESET_BRUSH: ["resetBrush", "rerenderMarks", "saveData"],
+    RESIZED: ["resize", "rerenderMarks"],
   },
   states: {
     canvas: {
@@ -138,7 +147,7 @@ const state = createState({
         drawing: {
           on: {
             MOVED_POINTER: {
-              do: "updateMark",
+              do: ["updateMark", "rerenderMarks"],
             },
             STOPPED_POINTING: {
               do: ["updateMark", "finishMark", "saveData"],
@@ -169,21 +178,29 @@ const state = createState({
         points: [[x, y, p]],
       }
 
-      pixiMark = createPixiMark(brush, settings)
-      pixiMark.addPoint([x, y, p])
+      markFactory = createMark(brush, settings)
+      markRenderer = createMarkRenderer(brush, settings)
+
+      const pts = markFactory.addPoint([x, y, p])
+      markRenderer.addPoints(pts)
     },
     updateMark(data) {
       let { x, y, p } = pointer
       const mark = data.currentMark!
-      pixiMark.addPoint([x, y, p])
       mark.points.push([x, y, p])
+
+      // const pts = markFactory.addPoint([x, y, p])
+      // markRenderer.addPoints(pts)
     },
     finishMark(data) {
       const mark = data.currentMark!
-      const { x, y, p } = pointer
-
+      let { x, y, p } = pointer
       mark.points.push([x, y, p])
-      pixiMark.complete([x, y, p])
+
+      // const pts = markFactory.addPoint([x, y, p], true)
+      // markRenderer.addPoints(pts)
+
+      markRenderer.complete()
 
       data.marks.push(mark)
       data.currentMark = undefined
@@ -194,16 +211,25 @@ const state = createState({
       data.currentMark = undefined
     },
     rerenderMarks(data) {
+      const { brush, settings } = data
       clean()
 
-      for (let { points } of data.marks) {
-        const mark = createPixiMark(data.brush, data.settings)
-        for (let i = 0; i < points.length - 1; i++) {
-          mark.addPoint(points[i])
-        }
-
-        mark.complete(points[points.length - 1])
+      for (let mark of data.marks) {
+        const pts = getMark(mark.points, brush, settings)
+        renderMark(pts, brush, settings)
       }
+
+      if (data.currentMark) {
+        const pts = getMark(data.currentMark.points, brush, settings)
+        renderMark(pts, brush, settings)
+      }
+    },
+
+    // Window
+    resize() {
+      const w = window.innerWidth
+      const h = window.innerHeight
+      resize(w, h)
     },
 
     // Undo / Redo
@@ -214,22 +240,12 @@ const state = createState({
 
     // Data
     saveData(data) {
-      const { marks, brush, settings } = data
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem(
-          "__brush_engine",
-          compress(JSON.stringify({ marks, brush, settings }))
-        )
-      }
+      Data.save(data)
     },
     loadData(data) {
-      if (typeof localStorage !== "undefined") {
-        const local = localStorage.getItem("__brush_engine")
-        if (local !== null) {
-          const loaded = JSON.parse(decompress(local)) as Partial<typeof data>
-
-          Object.assign(data, loaded)
-        }
+      const loaded = Data.load<typeof data>()
+      for (let key in loaded) {
+        Object.assign(data[key], loaded[key])
       }
     },
 
@@ -246,8 +262,8 @@ const state = createState({
     },
 
     // Setup / Teardown
-    mountApp(data, payload: { elm: HTMLDivElement }) {
-      payload.elm.appendChild(app.view)
+    mountApp(_, payload: { elm: HTMLDivElement }) {
+      mount(payload.elm)
       if (typeof window !== "undefined") {
         handleResize()
         window.addEventListener("resize", handleResize)
@@ -258,9 +274,9 @@ const state = createState({
         window.addEventListener("keyup", handleKeyUp)
       }
     },
-    unmountApp(data, payload: { elm: HTMLDivElement }) {
+    unmountApp() {
       clean()
-      payload.elm.innerHTML = ""
+      unmount()
       if (typeof window !== "undefined") {
         window.removeEventListener("resize", handleResize)
         window.removeEventListener("pointermove", handlePointerMove)

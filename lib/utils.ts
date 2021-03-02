@@ -69,3 +69,140 @@ export function modulate(
   }
   return result
 }
+
+/**
+ * Move a point in an angle by a distance.
+ * @param x0
+ * @param y0
+ * @param a angle (radians)
+ * @param d distance
+ */
+export function projectPoint(x0: number, y0: number, a: number, d: number) {
+  return [Math.cos(a) * d + x0, Math.sin(a) * d + y0]
+}
+
+function shortAngleDist(a0: number, a1: number) {
+  var max = Math.PI * 2
+  var da = (a1 - a0) % max
+  return ((2 * da) % max) - da
+}
+
+export function lerpAngles(a0: number, a1: number, t: number) {
+  return a0 + shortAngleDist(a0, a1) * t
+}
+
+export function angleDelta(a0: number, a1: number) {
+  return shortAngleDist(a0, a1)
+}
+
+export function isLeft(A: number[], C: number[], B: number[]) {
+  // >0 is counterclockwise, =0 is none (degenerate), <0 is clockwise
+  return (C[0] - A[0]) * (B[1] - A[1]) - (B[0] - A[0]) * (C[1] - A[1])
+}
+
+export function clockwise(A: number[], C: number[], B: number[]) {
+  return isLeft(A, C, B) > 0
+}
+
+/**
+ * Simplify a line (using Ramer-Douglas-Peucker algorithm)
+ * @param points An array of points as [x, y, ...][]
+ * @param tolerance The minimum line distance (also called epsilon).
+ * @returns Simplified array as [x, y, ...][]
+ */
+export function simplify(points: number[][], tolerance = 1) {
+  const len = points.length,
+    a = points[0],
+    b = points[len - 1],
+    [x1, y1] = a,
+    [x2, y2] = b
+
+  if (len > 2) {
+    let distance = 0,
+      index = 0,
+      max = Math.hypot(y2 - y1, x2 - x1)
+
+    for (let i = 1; i < len - 1; i++) {
+      const [x0, y0] = points[i],
+        d = Math.abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1) / max
+
+      if (distance > d) continue
+
+      distance = d
+      index = i
+    }
+
+    if (distance > tolerance) {
+      let l0 = simplify(points.slice(0, index + 1), tolerance)
+      let l1 = simplify(points.slice(index + 1), tolerance)
+      return l0.concat(l1.slice(1))
+    }
+  }
+
+  return [a, b]
+}
+
+// Get unique values from an array of primitives
+
+export function unique<T extends any>(arr: T[]) {
+  return Array.from(new Set(arr).values())
+}
+
+export function uniqueAdjacent<T extends any>(arr: T[]) {
+  return arr.filter((t, i) => i === 0 || !(t === arr[i - 1]))
+}
+
+// Get unique values from an array of objects (or anything)
+
+export function uniqueObj<T extends any>(arr: T[]) {
+  return Array.from(new Map(arr.map((p) => [JSON.stringify(p), p])).values())
+}
+
+export function uniqueAdjacentObj<T extends any>(arr: T[]) {
+  return arr.filter(
+    (t, i) => i === 0 || !(JSON.stringify(t) === JSON.stringify(arr[i - 1]))
+  )
+}
+
+// Get unique values from an array of arrays
+
+export function uniqueArr<T extends any[]>(arr: T[]) {
+  return Array.from(new Map(arr.map((p) => [p.join(), p])).values())
+}
+
+export function uniqueAdjacentArr<T extends any[]>(arr: T[]) {
+  return arr.filter(
+    (t, i) => i === 0 || !t.every((v, j) => v === arr[i - 1][j])
+  )
+}
+
+/**
+ * Get a Bezier curve to fit the provided points.
+ * Uses a Catmull-Rom spline (https://en.wikipedia.org/wiki/Centripetal_Catmull%E2%80%93Rom_spline)
+ * @param points
+ * @param k
+ * @returns
+ */
+export function getSpline(pts: number[][], k = 1) {
+  const path: number[][] = [pts[0]]
+
+  let p0: number[],
+    [p1, p2, p3] = pts
+
+  for (let i = 1, len = pts.length; i < len - 1; i++) {
+    p0 = p1
+    p1 = p2
+    p2 = p3
+    p3 = pts[i + 2] ? pts[i + 2] : p2
+    path.push([
+      p1[0] + ((p2[0] - p0[0]) / 6) * k,
+      p1[1] + ((p2[1] - p0[1]) / 6) * k,
+      p2[0] - ((p3[0] - p1[0]) / 6) * k,
+      p2[1] - ((p3[1] - p1[1]) / 6) * k,
+      p2[0],
+      p2[1],
+    ])
+  }
+
+  return path
+}
