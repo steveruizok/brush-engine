@@ -47,27 +47,14 @@ export function modulate(
   clamp = false
 ) {
   const [fromLow, fromHigh] = rangeA
-  const [toLow, toHigh] = rangeB
-  const result =
-    toLow + ((value - fromLow) / (fromHigh - fromLow)) * (toHigh - toLow)
-  if (clamp === true) {
-    if (toLow < toHigh) {
-      if (result < toLow) {
-        return toLow
-      }
-      if (result > toHigh) {
-        return toHigh
-      }
-    } else {
-      if (result > toLow) {
-        return toLow
-      }
-      if (result < toHigh) {
-        return toHigh
-      }
-    }
-  }
-  return result
+  const [v0, v1] = rangeB
+  const result = v0 + ((value - fromLow) / (fromHigh - fromLow)) * (v1 - v0)
+
+  return clamp
+    ? v0 < v1
+      ? Math.max(Math.min(result, v1), v0)
+      : Math.max(Math.min(result, v0), v1)
+    : result
 }
 
 /**
@@ -205,4 +192,69 @@ export function getSpline(pts: number[][], k = 1) {
   }
 
   return path
+}
+
+export function det(
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+  g: number,
+  h: number,
+  i: number
+) {
+  return a * e * i + b * f * g + c * d * h - a * f * h - b * d * i - c * e * g
+}
+
+// Get a circle from three points.
+export function circleFromThreePoints(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+) {
+  var a = det(x0, y0, 1, x1, y1, 1, x2, y2, 1)
+
+  var bx = -det(
+    x0 * x0 + y0 * y0,
+    y0,
+    1,
+    x1 * x1 + y1 * y1,
+    y1,
+    1,
+    x2 * x2 + y2 * y2,
+    y2,
+    1
+  )
+  var by = det(
+    x0 * x0 + y0 * y0,
+    x0,
+    1,
+    x1 * x1 + y1 * y1,
+    x1,
+    1,
+    x2 * x2 + y2 * y2,
+    x2,
+    1
+  )
+  var c = -det(
+    x0 * x0 + y0 * y0,
+    x0,
+    y0,
+    x1 * x1 + y1 * y1,
+    x1,
+    y1,
+    x2 * x2 + y2 * y2,
+    x2,
+    y2
+  )
+  return [
+    -bx / (2 * a),
+    -by / (2 * a),
+    Math.sqrt(bx * bx + by * by - 4 * a * c) / (2 * Math.abs(a)),
+  ]
 }

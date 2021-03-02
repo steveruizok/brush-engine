@@ -1,5 +1,5 @@
-import { lerp, lerpPoints, simplify } from "./utils"
-import { IBrush, ISettings } from "./types"
+import { lerp, lerpPoints } from "../utils"
+import { IBrush, ISettings } from "../types"
 
 // A factory function, creates a mark and returns functions for
 // adding points / completing the mark.

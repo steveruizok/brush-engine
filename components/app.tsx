@@ -1,6 +1,6 @@
 import state, { useSelector } from "lib/state"
-import Toolbar from "./toolbar"
-import Controls from "./controls"
+import Toolbar from "./ui/toolbar"
+import Controls from "./ui/controls"
 import * as React from "react"
 
 export default function App() {

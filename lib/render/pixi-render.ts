@@ -1,5 +1,5 @@
 import * as PIXI from "pixi.js"
-import { ISettings, IBrush } from "./types"
+import { ISettings, IBrush } from "../types"
 
 const dpr = window.devicePixelRatio
 

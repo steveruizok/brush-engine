@@ -1,4 +1,4 @@
-import { ISettings, IBrush } from "./types"
+import { ISettings, IBrush } from "../types"
 
 // Here I'm not going to use multiple layers (yet).
 // as we don't need to erase previous strokes in order to paint new ones.

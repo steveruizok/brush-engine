@@ -8,8 +8,9 @@ import {
   renderMark,
   clean,
   CreateMarkRenderer,
-} from "./exp"
-import { createMark, getMark, CreateMark } from "./mark"
+  setupExperiment,
+} from "./marks/exp"
+import { createMark, getMark, CreateMark } from "./marks/mark"
 import * as Data from "./data"
 
 let markRenderer: ReturnType<CreateMarkRenderer>
@@ -113,7 +114,7 @@ const state = createState({
     currentMark: undefined as IMark,
   },
   on: {
-    LOADED: ["mountApp", "loadData", "rerenderMarks"],
+    LOADED: ["mountApp", "loadData", "rerenderMarks", setupExperiment],
     UNLOADED: ["unmountApp"],
     STARTED_PRESSING_E: ["clearMarks", "saveData"],
     ERASED: ["clearMarks", "saveData"],

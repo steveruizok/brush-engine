@@ -1,4 +1,4 @@
-import { ISettings, IBrush } from "./types"
+import { ISettings, IBrush } from "../types"
 import {
   projectPoint,
   lerpAngles,
@@ -8,8 +8,10 @@ import {
   getSpline,
   clockwise,
   getPointBetween,
-} from "./utils"
-import * as Vector from "./curves/vector"
+  circleFromThreePoints,
+} from "../utils"
+import * as Vector from "../curves/vector"
+import { IVector } from "lib/curves/types"
 
 // Here I'm not going to use multiple layers (yet).
 // as we don't need to erase previous strokes in order to paint new ones.
@@ -318,7 +320,6 @@ export function resize(w: number, h: number) {
 export function clean() {
   const ctx = canvas.getContext("2d")
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  // setupExperiment()
 }
 
 export type ICreateMarkRenderer = typeof _createMarkRenderer
@@ -327,115 +328,245 @@ export type RenderMark = typeof renderMark
 
 // Experimental Stuff
 
-// export function setupExperiment() {
-//   const points = [
-//     [100, 100, 0.25],
-//     [225, 100, 0.5],
-//     [300, 250, 0.35],
-//     [280, 350, 0.35],
-//   ]
+let ctx = canvas?.getContext("2d")
 
-//   const ctx = canvas.getContext("2d")
+interface PaintOptions {
+  fill?: boolean
+  stroke?: boolean
+  strokeStyle?: string
+  fillStyle?: string
+  strokeWidth?: number
+}
 
-//   // Draw circles
-//   ctx.save()
-//   ctx.fillStyle = "#777"
-//   ctx.strokeStyle = "#ccc"
-//   for (let [x, y, r] of points) {
-//     ctx.beginPath()
-//     ctx.ellipse(x, y, 50 * r, 50 * r, 0, 0, PI2)
-//     ctx.stroke()
-//     ctx.fill()
-//   }
-//   ctx.restore()
+function paint(options = {} as PaintOptions) {
+  const {
+    fill = false,
+    stroke = true,
+    fillStyle = "rgba(255, 255, 255, .82)",
+    strokeStyle = "rgba(255, 255, 255, .82)",
+    strokeWidth = 2,
+  } = options
 
-//   // Draw lines
-//   ctx.save()
-//   ctx.strokeStyle = "#aaa"
+  ctx.save()
 
-//   const leftPoints: number[][] = []
-//   const rightPoints: number[][] = []
+  if (fill) {
+    ctx.fillStyle = fillStyle
+    ctx.fill()
+  }
 
-//   if (points.length === 1) {
-//     // Handle this differently
-//     // Draw a circle at the first point
-//     return
-//   }
+  if (stroke) {
+    ctx.strokeStyle = strokeStyle
+    ctx.lineWidth = strokeWidth
+    ctx.stroke()
+  }
 
-//   for (let i = 0, len = points.length; i < len; i++) {
-//     ctx.lineWidth = 1
-//     const A = points[i - 1]
-//     const B = points[i]
-//     const C = points[i + 1]
+  ctx.restore()
+}
 
-//     if (i === 1) {
-//       const [Ax, Ay, Ar] = A
-//       const [Bx, By] = B
+function drawCircle(
+  cx: number,
+  cy: number,
+  r: number,
+  options = {} as PaintOptions
+) {
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  paint(options)
+}
 
-//       const ABa = Math.atan2(By - Ay, Bx - Ax)
-//       const AL = projectPoint(Ax, Ay, ABa - TAU, 50 * Ar)
-//       const AR = projectPoint(Ax, Ay, ABa + TAU, 50 * Ar)
+function drawDot(cx: number, cy: number, r = 2, options = {} as PaintOptions) {
+  drawCircle(cx, cy, r, {
+    ...options,
+    fill: true,
+    stroke: true,
+    strokeStyle: "black",
+    strokeWidth: 1,
+    fillStyle: "red",
+  })
+}
 
-//       leftPoints.push(AL)
-//       rightPoints.push(AR)
-//     }
+function drawLine(
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  options?: PaintOptions
+) {
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.lineTo(x1, y1)
+  paint(options)
+}
 
-//     if (i > 0 && i < len - 1) {
-//       const [Ax, Ay] = A
-//       const [Bx, By, Br] = B
-//       const [Cx, Cy] = C
+function drawCurve(
+  x0: number,
+  y0: number,
+  cx: number,
+  cy: number,
+  x1: number,
+  y1: number,
+  options?: PaintOptions
+) {
+  ctx.beginPath()
+  ctx.moveTo(x0, y0)
+  ctx.quadraticCurveTo(cx, cy, x1, y1)
+  paint(options)
+}
 
-//       const ABa = Math.atan2(By - Ay, Bx - Ax)
-//       const BCa = Math.atan2(Cy - By, Cx - Bx)
-//       const MBa = lerpAngles(ABa, BCa, 0.5)
-//       const ML = projectPoint(Bx, By, MBa - TAU, 50 * Br)
-//       const MR = projectPoint(Bx, By, MBa + TAU, 50 * Br)
+function drawOuterTangents(
+  x0: number,
+  y0: number,
+  r0: number,
+  x1: number,
+  y1: number,
+  r1: number
+) {
+  const [G0x, G0y, H0x, H0y, G1x, G1y, H1x, H1y] = getOuterTangents(
+    x0,
+    y0,
+    r0,
+    x1,
+    y1,
+    r1
+  )
+  drawLine(G0x, G0y, H0x, H0y)
+  drawLine(G1x, G1y, H1x, H1y)
+  drawDot(G0x, G0y)
+  drawDot(G1x, G1y)
+  drawDot(H0x, H0y)
+  drawDot(H1x, H1y)
+}
 
-//       leftPoints.push(ML)
-//       rightPoints.push(MR)
-//     }
+export function setupExperiment() {
+  const Ax = 100,
+    Ay = 150,
+    Ar = 100,
+    Bx = 300,
+    By = 250,
+    Br = 50,
+    Cx = 300,
+    Cy = 450,
+    Cr = 100
 
-//     if (i === len - 1) {
-//       const [Ax, Ay] = A
-//       const [Bx, By, Br] = B
+  if (!canvas) return
 
-//       const ABa = Math.atan2(By - Ay, Bx - Ax)
-//       const BL = projectPoint(Bx, By, ABa - TAU, 50 * Br)
-//       const BR = projectPoint(Bx, By, ABa + TAU, 50 * Br)
+  ctx = canvas.getContext("2d")
+  ctx.lineWidth = 2
+  ctx.strokeStyle = "rgba(255, 255, 255, .82)"
+  ctx.fillStyle = "rgba(255, 255, 255, .82)"
 
-//       leftPoints.push(BL)
-//       rightPoints.push(BR)
-//     }
-//   }
+  // Circles A and B
+  drawCircle(Ax, Ay, Ar)
+  drawDot(Ax, Ay)
 
-//   const ptsToDraw = [...leftPoints, ...[...rightPoints].reverse()]
+  drawCircle(Bx, By, Br)
+  drawDot(Bx, By)
 
-//   const path = new Path2D(getSpline(ptsToDraw))
+  drawCircle(Cx, Cy, Cr)
+  drawDot(Cx, Cy)
 
-//   //Start cap
-//   const [x0, y0] = rightPoints[0]
-//   const [x1, y1] = leftPoints[0]
-//   const r = points[0][2]
-//   const [mpx, mpy] = getPointBetween(x0, y0, x1, y1, 0.5)
-//   const a0 = Math.atan2(mpy - y0, mpx - x0)
-//   path.arc(mpx, mpy, r * 50, a0 + PI, a0)
+  drawOuterTangents(Ax, Ay, Ar, Bx, By, Br)
+  drawOuterTangents(Bx, By, Br, Cx, Cy, Cr)
 
-//   ctx.save()
-//   ctx.strokeStyle = "green"
-//   ctx.stroke(path)
-//   ctx.restore()
+  // // Circle connecting points?
 
-//   // ctx.beginPath()
-//   // ctx.moveTo(ptsToDraw[0][0], ptsToDraw[0][1])
+  // const ab = getOuterTangents(Ax, Ay, Ar, Bx, By, Br)
+  // const bc = getOuterTangents(Bx, By, Br, Cx, Cy, Cr)
 
-//   // for (let i = 1; i < ptsToDraw.length; i++) {
-//   //   const [x, y] = ptsToDraw[i]
-//   //   ctx.lineTo(x, y)
-//   // }
+  // const dxAB = Bx - Ax,
+  //   dyAB = By - Ay,
+  //   dxBC = Cx - Bx,
+  //   dyBC = Cy - By
 
-//   // ctx.closePath()
-//   // ctx.save()
-//   // ctx.strokeStyle = "green"
-//   // ctx.stroke()
-//   // ctx.restore()
-// }
+  // const alAB = Math.atan2(dyAB, dxAB)
+  // const alBC = Math.atan2(dyBC, dxBC)
+  // const aABC = lerpAngles(alAB, alBC, 0.5)
+
+  // const abcx0 = Bx + Br * Math.cos(aABC - TAU),
+  //   abcy0 = By + Br * Math.sin(aABC - TAU),
+  //   abcx1 = Bx + Br * Math.cos(aABC + TAU),
+  //   abcy1 = By + Br * Math.sin(aABC + TAU)
+
+  // const [cx, cy, cr] = circleFromThreePoints(
+  //   ab[0],
+  //   ab[1],
+  //   abcx0,
+  //   abcy0,
+  //   bc[2],
+  //   bc[3]
+  // )
+  // drawCircle(cx, cy, cr)
+
+  // drawDot(abcx0, abcy0)
+  // drawDot(ab[0], ab[1])
+  // drawDot(bc[2], bc[3])
+
+  // const pts = getSpline(
+  //   [
+  //     [ab[0], ab[1]],
+  //     // [ab[2], ab[3]],
+  //     [abcx0, abcy0],
+  //     // [bc[0], bc[1]],
+  //     [bc[2], bc[3]],
+  //   ],
+  //   1
+  // )
+  // ctx.beginPath()
+  // ctx.strokeStyle = "white"
+  // ctx.fillStyle = "white"
+  // ctx.moveTo(ab[0], ab[1])
+  // for (let i = 1; i < pts.length; i++) {
+  //   ctx.bezierCurveTo(
+  //     pts[i][0],
+  //     pts[i][1],
+  //     pts[i][2],
+  //     pts[i][3],
+  //     pts[i][4],
+  //     pts[i][5]
+  //   )
+  // }
+  // ctx.stroke()
+  // drawCurve(ab[4], ab[5], abcx0, abcy0, bc[6], bc[7])
+}
+
+/**
+ * Get outer tangents of two circles.
+ * @param x0
+ * @param y0
+ * @param r0
+ * @param x1
+ * @param y1
+ * @param r1
+ * @returns [lx0, ly0, lx1, ly1, rx0, ry0, rx1, ry1]
+ */
+function getOuterTangents(
+  x0: number,
+  y0: number,
+  r0: number,
+  x1: number,
+  y1: number,
+  r1: number
+) {
+  const dx = x1 - x0,
+    dy = y1 - y0,
+    dist = Math.hypot(dx, dy)
+
+  // Circles are overlapping, no tangents
+  if (dist < Math.abs(r1 - r0)) return
+
+  const a0 = Math.atan2(dy, dx),
+    a1 = Math.acos((r0 - r1) / dist),
+    t0 = a0 + a1,
+    t1 = a0 - a1
+
+  return [
+    x0 + r0 * Math.cos(t1),
+    y0 + r0 * Math.sin(t1),
+    x1 + r1 * Math.cos(t1),
+    y1 + r1 * Math.sin(t1),
+    x0 + r0 * Math.cos(t0),
+    y0 + r0 * Math.sin(t0),
+    x1 + r1 * Math.cos(t0),
+    y1 + r1 * Math.sin(t0),
+  ]
+}
