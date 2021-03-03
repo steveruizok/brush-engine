@@ -1,9 +1,18 @@
 import { ISettings, IBrush } from "../types"
-import { getOuterTangents } from "../utils"
+import {
+  angleDelta,
+  getOuterTangents,
+  getSpline,
+  lerp,
+  projectPoint,
+  rotatePoint,
+  clamp,
+} from "../utils"
 import * as Bezier from "../curves/bezier"
 import * as Vector from "../curves/vector"
 import * as Utils from "../curves/utils"
 import { IVector, IPoint } from "../curves/types"
+import getCurve from "../curves/getCurve"
 
 // Here I'm not going to use multiple layers (yet).
 // as we don't need to erase previous strokes in order to paint new ones.
@@ -44,90 +53,160 @@ export function unmount() {
  */
 function _createMarkRenderer(brush: IBrush, options = {} as ISettings) {
   const { resolution: dpr = 1 } = options
-  const { color = "#ffffff", opacity = 1, alpha = 1 } = brush
+  const { spacing, color = "#ffffff", opacity = 1, alpha = 1 } = brush
   let i = 0,
-    O: number[],
     A: number[],
-    B: number[]
+    B: number[],
+    C: number[],
+    error = 0
   const stroke: number[][] = []
+
+  let pA = 0,
+    dA = 0
+
+  const leftPts: number[][] = []
+  const rightPts: number[][] = []
 
   // Function that draws a point
   function addPoint([x1, y1, r1]: number[]) {
-    const ctx = canvas.getContext("2d")
-    ctx.fillStyle = "white"
-    ctx.strokeStyle = "white"
-    ctx.lineJoin = "round"
-
-    O = A
     A = B
-    B = [x1 / dpr, y1 / dpr, r1 / dpr]
+    B = C
+    C = [x1 / dpr, y1 / dpr, r1 / dpr]
 
-    stroke.push(B)
+    stroke.push(C)
 
-    if (stroke.length > 2) {
-      const p1 = Vector.med(O, A)
-      const pc = A
-      const p2 = Vector.med(B, A)
+    if (B) {
+      // let ang = Math.atan2(C[1] - B[1], C[0] - B[0])
+      // dA = angleDelta(ang, pA)
+      // pA = ang
+      // if (Math.abs(dA) > Math.PI * 0.75) {
+      // Sharp corner
+      // for (let t = 0, step = 0.1; t <= 1; t += step) {
+      //   const [px, py] = projectPoint(
+      //     B[0],
+      //     B[1],
+      //     ang + Math.PI / 2 + t * Math.PI,
+      //     B[2]
+      //   )
+      //   leftPts.push([px, py])
+      // }
+      // for (let t = 0, step = 0.1; t <= 1; t += step) {
+      //   const [px, py] = projectPoint(
+      //     B[0],
+      //     B[1],
+      //     ang - Math.PI / 2 + t * Math.PI,
+      //     B[2]
+      //   )
+      //   rightPts.push([px, py])
+      // }
+      // return
+      // }
+    }
 
-      const b = Bezier.create(p1, pc, p2)
+    if (stroke.length <= 2) {
+      const [x2, y2, r2] = C
 
-      let p1n = Bezier.normalUnitVectorAtT(b, 0)
-      let g0 = Vector.add(p1, p1n)
-
-      // let t = Bezier.closestTtoPc(b)
-      // let pt = Bezier.getPointAtT(b, t)
-      // let ptn = Bezier.normalUnitVectorAtT(b, t)
-      // let g1 = Vector.add(pt, ptn)
-
-      let p2n = Bezier.normalUnitVectorAtT(b, 1)
-      let g2 = Vector.add(p2, p2n)
-
-      let ptm = Vector.med(p1n, p2n)
-      let cr = Vector.add(pc, ptm)
-
-      // drawDot(cr[0], cr[1], 1, { strokeStyle: "white" })
-
-      ctx.beginPath()
-      ctx.moveTo(g0[0], g0[1])
-      ctx.quadraticCurveTo(cr[0], cr[1], g2[0], g2[1])
-      // ctx.lineWidth = r1 / dpr
-      ctx.stroke()
-
-      drawCircle(g2[0], g2[1], r1 / 2, {
-        stroke: true,
+      drawCircle(x2, y2, r2, {
+        stroke: false,
         fill: true,
-        fillStyle: "white",
+        fillStyle: color,
         strokeWidth: 1,
-        strokeStyle: "white",
+        strokeStyle: color,
+        alpha: 1,
       })
 
-      const [x0, y0, r0] = A
+      if (stroke.length === 2) {
+        const [x1, y1, r1] = B
 
-      const pts = getOuterTangents(g0[0], g0[1], A[2], g2[0], g2[1], B[2])
+        const pts = getOuterTangents(x1, y1, r1, x2, y2, r2)
 
-      if (pts) {
-        ctx.save()
-        ctx.globalAlpha = 0.5
-        const [G0x, G0y, H0x, H0y, G1x, G1y, H1x, H1y] = pts
-        ctx.beginPath()
-        ctx.moveTo(G0x, G0y)
-        ctx.lineTo(H0x, H0y)
-        ctx.lineTo(H1x, H1y)
-        ctx.lineTo(G1x, G1y)
-        ctx.lineTo(G0x, G0y)
-        ctx.stroke()
-        ctx.fill()
-        ctx.restore()
+        if (pts) {
+          let [G0x, G0y, H0x, H0y, G1x, G1y, H1x, H1y] = pts
+          leftPts.push([G0x, G0y], [H0x, H0y])
+          rightPts.push([G1x, G1y], [H1x, H1y])
+
+          drawChunk(G0x, G0y, H0x, H0y, H1x, H1y, G1x, G1y, {
+            stroke: false,
+            fill: true,
+            fillStyle: color,
+            strokeWidth: 1,
+            strokeStyle: color,
+            alpha: 1,
+          })
+        }
       }
     } else {
-      drawCircle(B[0], B[1], B[2] / 2, {
-        stroke: true,
-        fill: true,
-        fillStyle: "white",
-        strokeWidth: 1,
-        strokeStyle: "white",
-      })
+      const p1 = Vector.med(A, B)
+      const pc = B
+      const p2 = Vector.med(B, C)
+      const b = Bezier.create(p1, pc, p2)
+
+      // Interpolate chunks
+      let P = [...p1, B[2]]
+      for (let t = 0, step = 0.25; t <= 1; t += step) {
+        const [x, y] = Bezier.getPointAtT(b, t)
+        const r = lerp(B[2], C[2], t)
+
+        drawCircle(x, y, r, {
+          stroke: false,
+          fill: true,
+          fillStyle: color,
+          strokeWidth: 1,
+          strokeStyle: color,
+          alpha: 1,
+        })
+
+        const pts = getOuterTangents(P[0], P[1], P[2], x, y, r)
+
+        if (pts) {
+          let [G0x, G0y, H0x, H0y, G1x, G1y, H1x, H1y] = pts
+          leftPts.push([G0x, G0y], [H0x, H0y])
+          rightPts.push([G1x, G1y], [H1x, H1y])
+
+          drawChunk(G0x, G0y, H0x, H0y, H1x, H1y, G1x, G1y, {
+            stroke: false,
+            fill: true,
+            fillStyle: color,
+            strokeWidth: 1,
+            strokeStyle: color,
+            alpha: 1,
+          })
+        }
+
+        P = [x, y, r]
+      }
     }
+
+    // Trace points
+
+    // if (leftPts.length > 1) {
+    //   clean()
+    //   // ctx.moveTo(leftPts[0][0], leftPts[0][1])
+    //   // for (let pt of leftPts) {
+    //   //   ctx.lineTo(pt[0], pt[1])
+    //   // }
+    //   for (let pt of getSpline(leftPts, 0.5)) {
+    //     ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
+    //   }
+    //   ctx.save()
+    //   ctx.strokeStyle = "red"
+    //   ctx.stroke()
+    //   ctx.restore()
+    // }
+
+    // if (rightPts.length > 1) {
+    //   // ctx.moveTo(rightPts[0][0], rightPts[0][1])
+    //   // for (let pt of rightPts) {
+    //   //   ctx.lineTo(pt[0], pt[1])
+    //   // }
+    //   for (let pt of getSpline(rightPts, 0.5)) {
+    //     ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
+    //   }
+    //   ctx.save()
+    //   ctx.strokeStyle = "red"
+    //   ctx.stroke()
+    //   ctx.restore()
+    // }
 
     i++
     drawPointsSize(i)
@@ -224,18 +303,22 @@ interface PaintOptions {
   strokeStyle?: string
   fillStyle?: string
   strokeWidth?: number
+  alpha?: number
 }
 
 function paint(options = {} as PaintOptions) {
   const {
     fill = false,
     stroke = true,
-    fillStyle = "rgba(255, 255, 255, .82)",
-    strokeStyle = "rgba(255, 255, 255, .82)",
-    strokeWidth = 2,
+    fillStyle = "rgba(255, 255, 255, 1)",
+    strokeStyle = "rgba(255, 255, 255, 1)",
+    strokeWidth = 1,
+    alpha = 1,
   } = options
 
   ctx.save()
+
+  ctx.globalAlpha = alpha
 
   if (fill) {
     ctx.fillStyle = fillStyle
@@ -301,6 +384,32 @@ function drawCurve(
   paint(options)
 }
 
+function drawChunk(
+  p0x: number,
+  p0y: number,
+  p1x: number,
+  p1y: number,
+  p2x: number,
+  p2y: number,
+  p3x: number,
+  p3y: number,
+  options?: PaintOptions
+) {
+  ctx.beginPath()
+  ctx.moveTo(p0x, p0y)
+  ctx.lineTo(p1x, p1y)
+  ctx.lineTo(p2x, p2y)
+  ctx.lineTo(p3x, p3y)
+  ctx.closePath()
+  paint({
+    alpha: 1,
+    stroke: true,
+    fill: true,
+    strokeWidth: 1,
+    ...options,
+  })
+}
+
 function drawOuterTangents(
   x0: number,
   y0: number,
@@ -337,82 +446,4 @@ export function setupExperiment() {
     Cr = 100
 
   if (!canvas) return
-
-  // ctx = canvas.getContext("2d")
-  // ctx.lineWidth = 2
-  // ctx.strokeStyle = "rgba(255, 255, 255, .82)"
-  // ctx.fillStyle = "rgba(255, 255, 255, .82)"
-
-  // // Circles A and B
-  // drawCircle(Ax, Ay, Ar)
-  // drawDot(Ax, Ay)
-
-  // drawCircle(Bx, By, Br)
-  // drawDot(Bx, By)
-
-  // drawCircle(Cx, Cy, Cr)
-  // drawDot(Cx, Cy)
-
-  // drawOuterTangents(Ax, Ay, Ar, Bx, By, Br)
-  // drawOuterTangents(Bx, By, Br, Cx, Cy, Cr)
-
-  // // Circle connecting points?
-
-  // const ab = getOuterTangents(Ax, Ay, Ar, Bx, By, Br)
-  // const bc = getOuterTangents(Bx, By, Br, Cx, Cy, Cr)
-
-  // const dxAB = Bx - Ax,
-  //   dyAB = By - Ay,
-  //   dxBC = Cx - Bx,
-  //   dyBC = Cy - By
-
-  // const alAB = Math.atan2(dyAB, dxAB)
-  // const alBC = Math.atan2(dyBC, dxBC)
-  // const aABC = lerpAngles(alAB, alBC, 0.5)
-
-  // const abcx0 = Bx + Br * Math.cos(aABC - TAU),
-  //   abcy0 = By + Br * Math.sin(aABC - TAU),
-  //   abcx1 = Bx + Br * Math.cos(aABC + TAU),
-  //   abcy1 = By + Br * Math.sin(aABC + TAU)
-
-  // const [cx, cy, cr] = circleFromThreePoints(
-  //   ab[0],
-  //   ab[1],
-  //   abcx0,
-  //   abcy0,
-  //   bc[2],
-  //   bc[3]
-  // )
-  // drawCircle(cx, cy, cr)
-
-  // drawDot(abcx0, abcy0)
-  // drawDot(ab[0], ab[1])
-  // drawDot(bc[2], bc[3])
-
-  // const pts = getSpline(
-  //   [
-  //     [ab[0], ab[1]],
-  //     // [ab[2], ab[3]],
-  //     [abcx0, abcy0],
-  //     // [bc[0], bc[1]],
-  //     [bc[2], bc[3]],
-  //   ],
-  //   1
-  // )
-  // ctx.beginPath()
-  // ctx.strokeStyle = "white"
-  // ctx.fillStyle = "white"
-  // ctx.moveTo(ab[0], ab[1])
-  // for (let i = 1; i < pts.length; i++) {
-  //   ctx.bezierCurveTo(
-  //     pts[i][0],
-  //     pts[i][1],
-  //     pts[i][2],
-  //     pts[i][3],
-  //     pts[i][4],
-  //     pts[i][5]
-  //   )
-  // }
-  // ctx.stroke()
-  // drawCurve(ab[4], ab[5], abcx0, abcy0, bc[6], bc[7])
 }

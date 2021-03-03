@@ -1,4 +1,4 @@
-import { lerp, getSpline, lerpPoints } from "../utils"
+import { lerp, clamp, getSpline, lerpPoints } from "../utils"
 import { IBrush, ISettings } from "../types"
 
 // A factory function, creates a mark and returns functions for
@@ -47,19 +47,22 @@ export function createMark(brush: IBrush, options = {} as ISettings) {
       // Get distance between current and previous point
       const dist = Math.hypot(x - prev[0], y - prev[1])
 
-      if (!last && dist < size / 2) return []
+      if (!last && dist < 4) return []
 
       // Use distance to determine pressure if not provided
       if (type !== "pen") {
-        p = 1 - Math.min(1, (dist - size / 2) / size)
+        p = 1 - Math.min(1, dist / size)
       }
 
-      // Smooth pressure changes (speed)
-      p = lerp(prev[2], p, p - prev[2] > 0 ? speed / 2 : speed)
+      if (p > prev[2]) {
+        p = clamp(lerp(prev[2], p, speed * speed), 0, 1)
+      } else {
+        p = clamp(lerp(prev[2], p, speed), 0, 1)
+      }
 
       // Add the last point at the current position
       if (last) {
-        ptsToDraw.push([x, y, lerp(minSize, maxSize, p / 2)])
+        ptsToDraw.push([x, y, lerp(minSize, maxSize, p)])
       } else {
         // Add interpolated points between prev and curr
         // let trav = error
@@ -93,7 +96,7 @@ export function createMark(brush: IBrush, options = {} as ISettings) {
 
         prev = [x, y, p]
 
-        newPts.push([x, y, lerp(minSize, maxSize, last ? p : p / 4)])
+        newPts.push([x, y, lerp(minSize, maxSize, p)])
       }
     }
 

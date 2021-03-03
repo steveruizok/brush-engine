@@ -114,7 +114,7 @@ const state = createState({
     currentMark: undefined as IMark,
   },
   on: {
-    LOADED: ["mountApp", "loadData", "rerenderMarks", setupExperiment],
+    LOADED: ["mountApp", "loadData", "rerenderMarks"],
     UNLOADED: ["unmountApp"],
     STARTED_PRESSING_E: ["clearMarks", "saveData"],
     ERASED: ["clearMarks", "saveData"],
@@ -187,17 +187,13 @@ const state = createState({
     },
     updateMark(data) {
       let { x, y, p } = pointer
-      const mark = data.currentMark!
-      mark.points.push([x, y, p])
-
       const pts = markFactory.addPoint([x, y, p])
       markRenderer.addPoints(pts)
     },
     finishMark(data) {
       const mark = data.currentMark!
       let { x, y, p } = pointer
-      mark.points.push([x, y, p])
-
+      mark.points = markFactory.points
       const pts = markFactory.addPoint([x, y, p], true)
       markRenderer.addPoints(pts)
 
@@ -220,10 +216,10 @@ const state = createState({
         renderMark(pts, brush, settings)
       }
 
-      if (data.currentMark) {
-        const pts = getMark(data.currentMark.points, brush, settings)
-        renderMark(pts, brush, settings)
-      }
+      // if (data.currentMark) {
+      //   const pts = getMark(data.currentMark.points, brush, settings)
+      //   renderMark(pts, brush, settings)
+      // }
     },
 
     // Window

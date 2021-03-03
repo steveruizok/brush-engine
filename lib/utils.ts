@@ -1,4 +1,15 @@
 /**
+ * Clamp a value into a range.
+ * @param n
+ * @param min
+ */
+export function clamp(n: number, min: number): number
+export function clamp(n: number, min: number, max: number): number
+export function clamp(n: number, min: number, max?: number): number {
+  return Math.max(min, typeof max !== "undefined" ? Math.min(n, max) : n)
+}
+
+/**
  * Get a point between two points.
  * @param x0 The x-axis coordinate of the first point.
  * @param y0 The y-axis coordinate of the first point.
@@ -30,6 +41,7 @@ export function lerpPoints(a: number[], b: number[], t: number) {
  * @param mu
  */
 export function lerp(y1: number, y2: number, mu: number) {
+  mu = clamp(mu, 0, 1)
   return y1 * (1 - mu) + y2 * mu
 }
 
@@ -299,4 +311,31 @@ export function getOuterTangents(
     x1 + r1 * Math.cos(t0),
     y1 + r1 * Math.sin(t0),
   ]
+}
+
+/**
+ * Rotate a point around a center.
+ * @param x The x-axis coordinate of the point.
+ * @param y The y-axis coordinate of the point.
+ * @param cx The x-axis coordinate of the point to rotate round.
+ * @param cy The y-axis coordinate of the point to rotate round.
+ * @param angle The distance (in radians) to rotate.
+ */
+export function rotatePoint(
+  x: number,
+  y: number,
+  cx: number,
+  cy: number,
+  angle: number
+) {
+  const s = Math.sin(angle)
+  const c = Math.cos(angle)
+
+  const px = x - cx
+  const py = y - cy
+
+  const nx = px * c - py * s
+  const ny = px * s + py * c
+
+  return [nx + cx, ny + cy]
 }

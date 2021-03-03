@@ -245,7 +245,7 @@ export function renderMark(
   ctx.beginPath()
   ctx.moveTo(splined[0][0], splined[0][1])
   for (let [cp1x, cp1y, cp2x, cp2y, px, py] of splined) {
-    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, px, py)
+    // ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, px, py)
   }
 
   ctx.fillStyle = "rgba(255, 0, 255, .9)"
