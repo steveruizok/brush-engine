@@ -126,12 +126,12 @@ function _createMarkRenderer(brush: IBrush, options = {} as ISettings) {
           rightPts.push([G1x, G1y], [H1x, H1y])
 
           drawChunk(G0x, G0y, H0x, H0y, H1x, H1y, G1x, G1y, {
-            stroke: false,
-            fill: true,
+            stroke: true,
+            fill: false,
             fillStyle: color,
             strokeWidth: 1,
             strokeStyle: color,
-            alpha: 1,
+            alpha: 0.2,
           })
         }
       }
@@ -148,12 +148,12 @@ function _createMarkRenderer(brush: IBrush, options = {} as ISettings) {
         const r = lerp(B[2], C[2], t)
 
         drawCircle(x, y, r, {
-          stroke: false,
-          fill: true,
+          stroke: true,
+          fill: false,
           fillStyle: color,
           strokeWidth: 1,
           strokeStyle: color,
-          alpha: 1,
+          alpha: 0.1,
         })
 
         const pts = getOuterTangents(P[0], P[1], P[2], x, y, r)
@@ -164,12 +164,12 @@ function _createMarkRenderer(brush: IBrush, options = {} as ISettings) {
           rightPts.push([G1x, G1y], [H1x, H1y])
 
           drawChunk(G0x, G0y, H0x, H0y, H1x, H1y, G1x, G1y, {
-            stroke: false,
-            fill: true,
+            stroke: true,
+            fill: false,
             fillStyle: color,
             strokeWidth: 1,
             strokeStyle: color,
-            alpha: 1,
+            alpha: 0.1,
           })
         }
 
@@ -179,34 +179,38 @@ function _createMarkRenderer(brush: IBrush, options = {} as ISettings) {
 
     // Trace points
 
-    // if (leftPts.length > 1) {
-    //   clean()
-    //   // ctx.moveTo(leftPts[0][0], leftPts[0][1])
-    //   // for (let pt of leftPts) {
-    //   //   ctx.lineTo(pt[0], pt[1])
-    //   // }
-    //   for (let pt of getSpline(leftPts, 0.5)) {
-    //     ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
-    //   }
-    //   ctx.save()
-    //   ctx.strokeStyle = "red"
-    //   ctx.stroke()
-    //   ctx.restore()
-    // }
+    if (leftPts.length > 1) {
+      clean()
+      // ctx.moveTo(leftPts[0][0], leftPts[0][1])
+      // for (let pt of leftPts) {
+      //   ctx.lineTo(pt[0], pt[1])
+      // }
 
-    // if (rightPts.length > 1) {
-    //   // ctx.moveTo(rightPts[0][0], rightPts[0][1])
-    //   // for (let pt of rightPts) {
-    //   //   ctx.lineTo(pt[0], pt[1])
-    //   // }
-    //   for (let pt of getSpline(rightPts, 0.5)) {
-    //     ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
-    //   }
-    //   ctx.save()
-    //   ctx.strokeStyle = "red"
-    //   ctx.stroke()
-    //   ctx.restore()
-    // }
+      ctx.beginPath()
+      for (let pt of getSpline(leftPts, 0.5)) {
+        ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
+      }
+      ctx.save()
+      ctx.strokeStyle = "red"
+      ctx.stroke()
+      ctx.restore()
+    }
+
+    if (rightPts.length > 1) {
+      // ctx.moveTo(rightPts[0][0], rightPts[0][1])
+      // for (let pt of rightPts) {
+      //   ctx.lineTo(pt[0], pt[1])
+      // }
+
+      for (let pt of getSpline(rightPts, 0.5).reverse()) {
+        ctx.bezierCurveTo(pt[0], pt[1], pt[2], pt[3], pt[4], pt[5])
+      }
+      ctx.closePath()
+      ctx.save()
+      ctx.strokeStyle = "red"
+      ctx.stroke()
+      ctx.restore()
+    }
 
     i++
     drawPointsSize(i)

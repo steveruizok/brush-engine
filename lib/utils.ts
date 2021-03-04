@@ -86,12 +86,12 @@ function shortAngleDist(a0: number, a1: number) {
   return ((2 * da) % max) - da
 }
 
-export function lerpAngles(a0: number, a1: number, t: number) {
-  return a0 + shortAngleDist(a0, a1) * t
-}
-
 export function angleDelta(a0: number, a1: number) {
   return shortAngleDist(a0, a1)
+}
+
+export function lerpAngles(a0: number, a1: number, t: number) {
+  return a0 + shortAngleDist(a0, a1) * t
 }
 
 export function isLeft(A: number[], C: number[], B: number[]) {

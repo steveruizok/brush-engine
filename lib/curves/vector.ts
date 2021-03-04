@@ -109,7 +109,7 @@ export function len2(A: IVector) {
  * @param A
  */
 export function len(A: IVector) {
-  return Math.sqrt(len2(A))
+  return Math.hypot(A[0], A[1])
 }
 
 /**
